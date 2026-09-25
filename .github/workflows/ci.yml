@@ -101,5 +101,5 @@ jobs:
             "-Dsonar.projectKey=blogreact" `
             "-Dsonar.sources=backend,frontend" `
             "-Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**" `
-            "-Dsonar.host.url=$env:SONAR_HOST_URL" `
+            "-Dsonar.host.url=http://localhost:9000" `
             "-Dsonar.token=$env:SONAR_TOKEN"
