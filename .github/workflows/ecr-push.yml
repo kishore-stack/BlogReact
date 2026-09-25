@@ -21,6 +21,10 @@ jobs:
     name: Build, Scan and Push Images
     runs-on: ubuntu-latest
 
+    outputs:
+      backend_image: ${{ steps.image-tags.outputs.backend_image }}
+      frontend_image: ${{ steps.image-tags.outputs.frontend_image }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -48,8 +52,7 @@ jobs:
           file: ./backend/Dockerfile
           load: true
           push: false
-          tags: |
-            blogapp-backend:${{ github.sha }}
+          tags: blogapp-backend:${{ github.sha }}
 
       - name: Scan backend image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
@@ -78,8 +81,7 @@ jobs:
           file: ./frontend/Dockerfile
           load: true
           push: false
-          tags: |
-            blogapp-frontend:${{ github.sha }}
+          tags: blogapp-frontend:${{ github.sha }}
 
       - name: Scan frontend image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
@@ -107,3 +109,50 @@ jobs:
       - name: Push frontend image to ECR
         run: |
           docker push ${{ steps.image-tags.outputs.frontend_image }}
+
+  deploy-to-eks:
+    name: Deploy to Amazon EKS
+    needs: build-scan-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::810100780119:role/GitHubActionsBlogAppECRRole
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: latest
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region ${{ env.AWS_REGION }} \
+            --name blogapp-eks
+
+      - name: Deploy backend to EKS
+        run: |
+          kubectl -n blog-app set image deployment/backend \
+            backend=${{ needs.build-scan-push.outputs.backend_image }}
+
+      - name: Deploy frontend to EKS
+        run: |
+          kubectl -n blog-app set image deployment/frontend \
+            frontend=${{ needs.build-scan-push.outputs.frontend_image }}
+
+      - name: Wait for backend rollout
+        run: |
+          kubectl -n blog-app rollout status deployment/backend \
+            --timeout=180s
+
+      - name: Wait for frontend rollout
+        run: |
+          kubectl -n blog-app rollout status deployment/frontend \
+            --timeout=180s
+
+      - name: Validate deployed pods
+        run: |
+          kubectl get pods -n blog-app
