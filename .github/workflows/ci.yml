@@ -1,4 +1,3 @@
-
 name: Blog Application CI
 
 on:
@@ -69,8 +68,11 @@ jobs:
     name: SonarQube Analysis
     runs-on: self-hosted
 
-    # Run only for trusted pushes, not public pull requests.
+    # Run only for trusted pushes, not public pull requests
     if: github.event_name == 'push'
+
+    env:
+      SONAR_SCANNER_HOME: 'C:\sonar-scanner\sonar-scanner-7.2.0.5079-windows-x64'
 
     steps:
       - name: Checkout repository
@@ -90,12 +92,14 @@ jobs:
         run: npm ci
 
       - name: Run SonarQube analysis
-        uses: SonarSource/sonarqube-scan-action@v6
+        shell: powershell
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        with:
-          args: >
-            -Dsonar.projectKey=blogreact
-            -Dsonar.sources=backend,frontend
-            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**
+        run: |
+          & "$env:SONAR_SCANNER_HOME\bin\sonar-scanner.bat" `
+            "-Dsonar.projectKey=blogreact" `
+            "-Dsonar.sources=backend,frontend" `
+            "-Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**" `
+            "-Dsonar.host.url=$env:SONAR_HOST_URL" `
+            "-Dsonar.token=$env:SONAR_TOKEN"
