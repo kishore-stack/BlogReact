@@ -81,22 +81,22 @@ jobs:
           tags: |
             blogapp-frontend:${{ github.sha }}
 
-      - name: Scan backend image with Trivy
+      - name: Scan frontend image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: blogapp-backend:${{ github.sha }}
+          image-ref: blogapp-frontend:${{ github.sha }}
           format: json
-          output: trivy-backend-report.json
+          output: trivy-frontend-report.json
           exit-code: "0"
           ignore-unfixed: true
           vuln-type: os,library
           severity: CRITICAL,HIGH
 
-      - name: Upload backend Trivy report
+      - name: Upload frontend Trivy report
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-backend-report
-          path: trivy-backend-report.json
+          name: trivy-frontend-report
+          path: trivy-frontend-report.json
 
       - name: Tag frontend image for ECR
         run: |
